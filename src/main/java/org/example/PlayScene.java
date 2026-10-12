@@ -305,9 +305,31 @@ public class PlayScene implements GameScene {
 
         // Update positions for all entities
         for (Entity entity : entityManager.getEntities()) {
-            if (entity.cTransform != null) {
-                entity.cTransform.positionX += entity.cTransform.velocityX;
-                entity.cTransform.positionY += entity.cTransform.velocityY;
+            if (entity.cTransform == null) {
+                continue;
+            }
+
+            if (entity == player && entity.cCollision != null) {
+                // Move each axis separately so the player slides along solid tiles.
+                double radius = entity.cCollision.radius;
+                double newX = entity.cTransform.positionX + entity.cTransform.velocityX;
+                if (!tileMap.collidesCircle(newX, entity.cTransform.positionY, radius)) {
+                    entity.cTransform.positionX = newX;
+                }
+                double newY = entity.cTransform.positionY + entity.cTransform.velocityY;
+                if (!tileMap.collidesCircle(entity.cTransform.positionX, newY, radius)) {
+                    entity.cTransform.positionY = newY;
+                }
+                continue;
+            }
+
+            entity.cTransform.positionX += entity.cTransform.velocityX;
+            entity.cTransform.positionY += entity.cTransform.velocityY;
+
+            if (entity.cBullet != null && entity.cCollision != null
+                && tileMap.collidesCircle(entity.cTransform.positionX, entity.cTransform.positionY,
+                    entity.cCollision.radius)) {
+                entity.destroy();
             }
         }
     }

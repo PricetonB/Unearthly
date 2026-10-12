@@ -6,9 +6,11 @@ import javafx.scene.image.Image;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 /**
  * A tile map made of named, transparent layers. Tile coordinates are zero-based
@@ -20,6 +22,7 @@ public final class TileMap {
     private final int tileSize;
     private final Map<String, Image> tileSheets = new LinkedHashMap<>();
     private final List<Layer> layers = new ArrayList<>();
+    private final Set<String> solidTiles = new HashSet<>();
 
     public TileMap(int columns, int rows, int tileSize) {
         if (columns <= 0 || rows <= 0 || tileSize <= 0) {
@@ -92,6 +95,56 @@ public final class TileMap {
             }
         }
         layers.add(new Layer(name, copy));
+    }
+
+    /**
+     * Marks a tile type as solid. Every placement of it, on any layer, blocks movement.
+     */
+    public void setSolid(String sheetId, int x, int y) {
+        solidTiles.add(solidKey(sheetId, x, y));
+    }
+
+    public boolean isBlocked(int column, int row) {
+        if (column < 0 || row < 0 || column >= columns || row >= rows) {
+            return false;
+        }
+        for (Layer layer : layers) {
+            Tile tile = layer.cells[row][column];
+            if (tile != null && solidTiles.contains(solidKey(tile.sheetId, tile.x, tile.y))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if a circle at the given pixel position overlaps any solid tile.
+     */
+    public boolean collidesCircle(double centerX, double centerY, double radius) {
+        int minColumn = (int) Math.floor((centerX - radius) / tileSize);
+        int maxColumn = (int) Math.floor((centerX + radius) / tileSize);
+        int minRow = (int) Math.floor((centerY - radius) / tileSize);
+        int maxRow = (int) Math.floor((centerY + radius) / tileSize);
+
+        for (int row = minRow; row <= maxRow; row++) {
+            for (int column = minColumn; column <= maxColumn; column++) {
+                if (!isBlocked(column, row)) {
+                    continue;
+                }
+                double nearestX = Math.max(column * tileSize, Math.min(centerX, (column + 1) * tileSize));
+                double nearestY = Math.max(row * tileSize, Math.min(centerY, (row + 1) * tileSize));
+                double dx = centerX - nearestX;
+                double dy = centerY - nearestY;
+                if (dx * dx + dy * dy < radius * radius) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    private static String solidKey(String sheetId, int x, int y) {
+        return sheetId + ":" + x + ":" + y;
     }
 
     public void render(GraphicsContext graphics) {

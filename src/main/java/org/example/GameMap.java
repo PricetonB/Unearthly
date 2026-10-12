@@ -33,6 +33,9 @@ public final class GameMap {
         details[3][7] = lava;
         map.addLayer("details", details);
 
+        // Solid tile types block movement wherever they are placed, on any layer.
+        map.setSolid("terrain", 17, 5);
+
         return map;
     }
 
